@@ -1,0 +1,522 @@
+---
+title: "AgriLOWE Simulation Report"
+author: "Matteo Coronese, Martina Occelli, Francesco Lamperti, Andrea Roventini"
+date: "23/6/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.width='800px')
+```
+
+```{r load}
+# load libraries and data, perform preliminary operations on data
+library(reshape2)
+library(magrittr)
+require(tidyverse)
+library(knitr)
+library(pander)
+library(reshape2)
+library(kableExtra)
+
+#load("~/Projects/agrilove/data.RData") #load data
+transient <- 100
+theme_set(theme_grey())
+```
+
+
+###Flags
+```{r}
+#print table with on, off and settings of various flags
+flags <- data.frame( Flag = c("Auction","Imitation","Land Abandonment","Deforestation","Central Forest",
+                              "Soil Degradation", "Climate Box", "Sustainable"),
+                     Status =c(flag_auction,flag_imit,flag_land_abandon,flag_deforestation,flag_central_forest,land_degr_flag, flag_climate, flag_clustered_agri))
+
+flags %>% mutate(
+    Status=case_when(
+        Flag!="Soil Degradation" & Flag!="Climate Box" & Flag!="Sustainable" ~ ifelse(Status ==1, "ON", "OFF"),
+        Flag=="Soil Degradation" ~ ifelse(Status ==0, "ON", "OFF"),
+        Flag=="Climate Box" & Status==0 ~ "OFF",
+        Flag=="Climate Box" & Status==1 ~ "Drought",
+        Flag=="Climate Box" & Status==2 ~ "Flood",
+        Flag=="Climate Box" & all(flag_climate!=c(0,1,2)) ~ "Drought & Flood",
+        Flag=="Sustainable" ~ ifelse(Status ==1|Status ==2, "Clustered", "Random")
+    ),
+    Status = case_when(
+        Flag!="Climate Box" & Flag!="Sustainable" ~ cell_spec(Status, "html", color= "white", background = ifelse(Status =="ON", "green", "red")),
+        Flag=="Climate Box" ~ cell_spec(Status, "html", color= "white", background = ifelse(Status =="OFF","red", "#bf812d")),
+        Flag=="Sustainable" ~ cell_spec(Status, "html", color= "white", background = ifelse(Status =="Clustered","pink", "blue"))
+    )
+) %>% 
+    t() %>% 
+    kable(format="html", escape=F, align=rep('c', 7)) %>% 
+    column_spec(1, width = "1em", bold = TRUE) %>% 
+    #column_spec(1:7, background = "yellow") %>% 
+    kable_styling(bootstrap_options = "hover", full_width = T)
+
+```
+Transient set to `r transient`.
+
+-----
+
+###Initialization
+```{r, fig.asp=0.62}
+data %>% filter(time==1, mc==1) %>% 
+    select(lat,lon, theta) %>%
+    na_if(0) %>%
+    ggplot(aes(lon,x+1-lat, fill=theta)) +
+    geom_tile(color="white") +
+    scale_fill_gradient(low="#f5f5f5", high="#a6611a", na.value = "#006d2c") +
+    xlab("") +
+    ylab("") +
+    ggtitle("Land Productivity") +
+    theme_minimal() +
+    theme(
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        legend.box.margin = margin(t = -12, r = 0, b = 0, l = 0, unit = "pt"),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+    ) -> g_theta_map
+
+data %>% filter(time==1, mc==1) %>% 
+    select(lat,lon, agri) %>%
+    mutate(
+        agri=factor(agri, 
+                    levels = c(1,2,0),
+                    labels = c("Conventional","Sustainable","Forest")
+                    )
+    ) %>% 
+    ggplot(aes(lon,x+1-lat)) +
+    geom_tile(aes(fill=agri), color="white") +
+    scale_fill_manual(values=c("Forest"="#006d2c","Conventional"="#ef8a62","Sustainable"="#67a9cf")) +
+    xlab("") +
+    ylab("") +
+    ggtitle("Agriculture Type") +
+    theme_minimal() +
+    theme(
+        legend.position = "bottom",
+        legend.title = element_blank(),
+        axis.text = element_blank(),
+        panel.grid = element_blank()
+    ) -> g_agri_map
+
+gridExtra::grid.arrange(g_theta_map,g_agri_map, nrow=1)
+
+data %>% filter(time==1 | time==500, mc==1) %>% 
+    select(time, theta) %>% 
+    mutate(time=case_when(
+        time==1 ~"Begin",
+        time==500 ~"End"
+    )) %>% group_by(time) %>% 
+    mutate(grouped_id = row_number()) %>% 
+    spread(time,theta) %>% 
+    select(-grouped_id) %>% 
+    summarise(cor=cor(Begin,End)) -> cor_theta
+
+data %>% filter(time==1 | time==500, mc==1) %>% 
+    select(time, agri) %>% 
+    mutate(time=case_when(
+        time==1 ~"Begin",
+        time==500 ~"End"
+    )) %>% group_by(time) %>% 
+    mutate(grouped_id = row_number()) %>% 
+    spread(time,agri) %>% 
+    select(-grouped_id) %>% 
+    summarise(cor=cor(Begin,End)) -> cor_agri
+
+```
+
+**Initial-Final Cell Correlation**   
+Land Productivity: `r round(cor_theta,2)`.   
+Agricultural Type: `r round(cor_agri,2)`.
+
+
+
+------
+
+###Cell Data
+```{r}
+#data %>% select(-lat,-lon, -agri) %>% 
+#    filter(time>transient, producer!=0) %>%
+#    select(-loss, -price_land, -unfilled_demand, -revenues, -tot_cost) %>% 
+#    gather(variable, value,-producer, -time, -mc) %>% 
+#    group_by(variable, time, mc) %>% 
+#    summarise(
+#        mean1 = mean(value)
+#    ) %>% group_by(variable, time) %>% 
+#    summarise(
+#        mean = mean(mean1),
+#        se = sd(mean1)/sqrt(n())
+#    ) %>% ungroup() %>% 
+#    mutate(
+#        variable = factor(variable,
+#                          levels = c("output", "sales", "theta", "RDint", "gain", "L", "profit", "wealth", "cost"),
+#                          labels = c("Output", "Sales", "Productivity", "Innovation Expenditure", "Innovation", #"Labor", "Profit", "Wealth", "Cost")
+#                          )
+#    ) %>% 
+#    ggplot() +
+#    geom_line(aes(x=time, y=mean), size=0.1) +
+#    #scale_y_continuous(breaks = NULL) +
+#    geom_ribbon(aes(x=time, ymin=(mean - 1.96*se), ymax=(mean+1.96*se)), alpha=0.4, size=0)+ #set alpha=0 to #suppress confidence bands
+#    facet_wrap(~variable, scales = "free_y", nrow=4) +
+#    xlab("Time")+
+#    ylab("MC Mean") +
+#    theme(legend.position = "bottom",
+#          legend.title = element_blank(),
+#          panel.grid = element_blank())
+
+```
+------
+
+###Time Series
+```{r}
+ data_t %>%  
+        gather(variable, value, -time, -mc) %>% 
+        group_by(variable, time) %>% 
+        summarise(
+            mean = mean(value),
+            se = sd(value)/sqrt(n())
+        ) %>% ungroup() %>% 
+    mutate(
+        variable = factor(variable,
+                          levels=c("demand", "excess_demand", "supply", "food_price", "forests", "wage", "innovators", "imitators", "bankrupt"),
+                          labels=c("Demand", "Excess Demand", "Supply", "Food Price", "Forests", "Wage", "Innovators", "Imitators", "Bankrupts")
+        )
+    ) %>% 
+    filter(time>transient) %>% 
+        ggplot() +
+        geom_line(aes(x=time, y=mean), size=0.1) +
+        geom_ribbon(aes(x=time, ymin=(mean - 1.96*se), ymax=(mean+1.96*se)), alpha=0.4, size=0)+ 
+        facet_wrap(~variable, scales = "free_y") +
+        xlab("Time")+
+        ylab("MC Mean") +
+        theme(panel.grid = element_blank())
+
+
+
+```
+-----
+
+###Output
+```{r}
+data_t %>% 
+        gather(variable, value, -time, -mc) %>% 
+        group_by(variable, time) %>% 
+        summarise(
+            mean = mean(value),
+            se = sd(value)/sqrt(n())
+        ) %>%
+    filter(time>transient) %>% 
+    filter(variable=="supply" | variable=="demand") %>% 
+        ggplot() +
+        geom_line(aes(x=time, y=mean, color=variable), size=0.4) +
+        geom_ribbon(aes(x=time, ymin=(mean - 1.96*se), ymax=(mean+1.96*se), fill=variable), alpha=0.2, size=0)+
+        scale_color_discrete(breaks = c("supply", "demand"), labels = c("Supply", "Demand")) +
+        scale_fill_discrete(breaks = c("supply", "demand"), labels = c("Supply", "Demand")) +
+        xlab("Time")+
+        ylab("MC Mean") +
+        theme(panel.grid = element_blank(),
+              legend.position = c(0.2,0.7),
+              legend.background = element_blank(),
+              legend.title = element_blank()
+              )
+```
+-----
+
+
+###Productivity
+```{r}
+
+data %>% filter(producer!=0) %>% group_by(lat,lon,time) %>% 
+    summarize(mean= mean(theta)) %>% 
+    filter(time %in% c(100, 200, 300, 400, 500)) %>% 
+    ggplot() + 
+    geom_density(aes(x=mean), alpha=0.7, fill="#9ebcda", color="#9ebcda") + 
+    facet_grid(~factor(time)) +
+    #xlab("Land Productivity") +
+    theme(axis.title.y = element_blank(),
+          legend.title = element_blank(),
+          axis.title = element_blank(),
+          legend.position = "bottom"
+          ) -> g_prod
+    
+
+data %>% filter(producer!=0) %>% group_by(lat,lon,time,agri) %>% 
+    summarize(mean= mean(theta)) %>% 
+    mutate(
+        agri= factor(agri, levels=c("1","2"), labels=c("Conventional", "Sustainable"))
+    ) %>% 
+    filter(time %in% c(100, 200, 300, 400, 500)) %>% 
+    ggplot() + 
+    geom_density(aes(x=mean, fill=agri, color=agri), alpha=0.3) + 
+    facet_grid(~factor(time)) +
+    #xlab("Land Productivity") +
+    theme(axis.title.y = element_blank(),
+          legend.title = element_blank(),
+          axis.title = element_blank(),
+          legend.position = "bottom"
+          ) -> g_prod_agri
+    
+
+gridExtra::grid.arrange(g_prod,g_prod_agri)
+
+```
+
+---
+
+###Market Behavior
+
+```{r}
+
+data_p %>% select(producer, time, mc, mkt_shares) %>%  filter(time>transient) %>%  filter(mc==1) %>%   #select id-number of montecarlo replication to be plotted
+    ggplot() +
+    geom_line(aes(x=time, y=mkt_shares, color=factor(producer)), size=0.1) +
+    ylab("Market Shares by Producer (Single MC)") +
+    xlab("Time") +
+    theme(legend.position = "none")
+
+data_market_conc %>% 
+    filter(time>=100) %>%
+    select(-mean_herf, -se_herf) %>% 
+    gather(variable, value, -time,-sd_max_producer) %>% 
+    ggplot() +
+    geom_line(aes(x=time, y=value, color=variable)) +
+    geom_ribbon(aes(x=time, ymin=value - (1.96*sd_max_producer), ymax=value + (1.96*sd_max_producer), alpha=variable)) +
+    scale_alpha_manual(values=c("mean_max_producer"=0.2, "max_max"=0),guide = 'none') +
+    scale_color_manual(values= c("mean_max_producer"="black","max_max"="red"), labels=c("mean_max_producer"="MC Mean", "max_max"="MC Max")) +
+    xlab("Time") +
+    ggtitle("Owned Cells of Largest Producer") +
+    theme(
+        legend.position = c(0.83,0.15),
+        legend.title = element_blank(),
+        axis.title.y = element_blank(),
+        text = element_text(size=10)
+    ) -> g_max
+
+data_market_conc %>%
+    filter(time>transient) %>% 
+    ggplot() +
+    geom_line(aes(x=time, y=mean_herf)) +
+    geom_ribbon(aes(x=time, ymin=(mean_herf - 1.96*se_herf), ymax=(mean_herf+1.96*se_herf)), alpha=0.2)+
+    xlab("Time") +
+    ggtitle("Herfindal Index (MC Mean)") +
+    theme(
+        legend.position = "none",
+        axis.title.y = element_blank(),
+        text = element_text(size=10)
+        ) -> g_herf
+
+data %>% filter(producer!=0) %>%  group_by(time,mc, producer) %>% summarize(
+      largest = n()
+) %>% group_by(time, producer) %>%
+    summarise(
+        mean = mean(largest)
+    ) %>% filter(time %in% c(100,200,300,400,500)) %>% ggplot() +
+    geom_density(aes(x=mean, fill=factor(time))) +
+    facet_wrap(~factor(time), scales = "free", nrow=1) +
+    ggtitle("Owned Cells Distribution at Selected Times (MC Mean)") +
+    theme(
+        legend.position = "none",
+        axis.title = element_blank(),
+        text = element_text(size=10)
+        ) -> g_dist
+
+gridExtra::grid.arrange(g_max, g_herf, g_dist, layout_matrix = rbind(c(1,2),c(1,2),c(3,3)))
+
+```
+
+---
+
+### Transitions
+
+```{r}
+data %>% #filter(time>transient) %>%
+    filter(agri!=0) %>% 
+    group_by(mc,time) %>% 
+    summarise(
+        mc_sum_1 = sum(agri==1),
+        mc_sum_2 = sum(agri==2),
+        n = n()
+    ) %>% mutate(
+        Conventional = mc_sum_1/n,
+        Sustainable = mc_sum_2/n
+    ) %>% select(-mc_sum_1, -mc_sum_2, -n) %>% 
+    gather(variable, value, -time, -mc) %>%
+    filter(variable=="Sustainable") -> data_agri_aux
+
+data_agri_aux %>% 
+    ggplot() +
+    geom_line(aes(x=time, y=value, color=factor(mc))) +
+    #geom_ribbon(aes(x=time, ymin=share-1.96*se, ymax=share+1.96*se, fill=factor(variable)), alpha=0.3) +
+    ylim(0, 1) +
+    theme(
+        legend.position = "none",
+        axis.title = element_blank()
+        ) +
+    ylab("") +
+    ggtitle("Share of Cells with Sustainable Agriculture by MC") -> share_sust_mc_graph
+
+data_agri_aux %>%
+    mutate(
+        period=floor(time/100)
+    ) %>% 
+    ggplot() +
+    geom_boxplot(aes(x=time, y=value, fill=factor(period))) +
+    #geom_ribbon(aes(x=time, ymin=share-1.96*se, ymax=share+1.96*se, fill=factor(variable)), alpha=0.3) +
+    ylim(0, 1) +
+    theme(legend.position = "none",
+          axis.title = element_blank(),
+          panel.grid = element_blank()) +
+    ggtitle("Share of Cells with Sustainable Agriculture") -> share_sust_boxplot_graph
+
+gridExtra::grid.arrange(share_sust_mc_graph, share_sust_boxplot_graph, bottom="Time")
+
+data_agri_aux %>% 
+    filter(time==500) %>% ungroup() %>% 
+    summarise(
+        lockins = paste0(sum(value==0)/max(mc)*100,"%"),
+        transitions =  paste0(sum(value>=0.85)/max(mc)*100,"%")
+    ) %>% as_tibble() %>% 
+    set_colnames(c("Lockin Probabililty", "Transition Probability")) %>% 
+    kable(caption = "Transition Dynamics", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F)
+
+```
+---
+
+### Cell Level Charts
+
+```{r farm level}
+data %>% filter(mc==1, producer!=0, producer!=9999) %>% #select id-number of montecarlo replication to be plotted
+    filter(time>transient) %>% 
+    mutate(
+        index = paste0(lat, lon)
+    ) %>% select(index, time, output, theta, L, wealth) %>% 
+    gather(variable, value, -index, -time) %>% 
+        mutate(
+        variable = factor(variable, 
+                          levels = c("output", "theta", "L", "wealth"),
+                          labels = c("Output", "Soil Productivity", "Labor", "Wealth")
+                          )
+    ) %>% 
+    ggplot() +
+    geom_line(aes(x=time, y=value, color=index), size=0.1) +
+    facet_wrap(~variable, scales = "free", nrow=2) +
+    theme(
+        legend.position = "none",
+        axis.title = element_blank()
+          )
+```
+
+-------
+
+###Parametrization
+```{r}
+
+tibble("Alpha"          = alpha,        
+       "UD Sensitivity" = ud_sens,      
+       "Wealth Buffer"  = wealth_buffer) %>% 
+    kable(caption = "Labor", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left")
+
+tibble( "Price Sensitivity"    = eps_price,     
+        "Mkt Share Sensitivity"= eps_share,     
+        "Cost Share Fitness"   = omega_cost,    
+        "UD Share Fitness"     = omega_unfilled) %>% 
+    kable(caption = "Market Behavior", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Imitation Effort" = imit_effort,  
+       "Mu Imitation" = mu_imit,
+       "Mu Spillovers" = mu_band) %>% 
+    kable(caption = "Imitation", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left")
+
+tibble("R&D Effort" = rd_effort,      
+       "Theta Min"  = theta_min,      
+       "Theta Max"  = theta_max,      
+       "Sustainable Penalty"= agri_growth_penalty,
+       "Exp Sensitivity"       = iota) %>% 
+    kable(caption= "Innovation", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Productivity Gain" = forest_theta_gain,  
+       "Reforest Time" = time_to_forest,      
+       "UD Sensitivity" = def_rho) %>% 
+    kable(caption= "Forests", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left")
+
+tibble("Ray of Observation" = ray,          
+       "Attitude to Switch" = tau,          
+       "Switch Time"        = switch_time,
+       "Memory"             = wind_switch) %>% 
+    kable(caption = "Switching Behavior", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Spatial Sensitivity" = rho,              
+       "Bid Wealth Share" = wealth_share_bid,
+       "UD Mean Time" = ud_mean_time) %>% 
+    kable(caption = "Cells on Sale", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left")
+
+tibble("Demand Growth"       = demand_rate,        
+       "Land Rent Shock Variance" = price_land_var) %>% 
+    kable(caption = "Miscellaneous", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Lower Asymptote" = lower_asymp,      
+       "Upper Asymptote" = upper_asymp_conv, 
+       "Growth" = growth_conv,      
+       "Start" = start_time_conv,  
+       "Asymmetry" = asymp_asym_conv) %>% 
+    kable(caption="Soil Degradation", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left") 
+
+tibble("Mean" = theta_init, 
+       "Variance" = var_theta_init,
+       "Sustainable Penalty" = theta_init_pen_sust) %>% 
+    kable(caption= "Initial Productivity", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Alpha"=alpha_drought,       
+       "Beta"=beta_drought,        
+       "Frequency"=droughts_frequency,  
+       "Spatial Correlation"=spatial_corr_drought,
+       "Max Distance"=max_drought_dist) %>% 
+    kable(caption="Climate Box - Droughts", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "float_left")
+
+tibble("Alpha"=alpha_flood,         
+       "Beta"=beta_flood,          
+       "Frequency"=flood_frequency,     
+       "Spatial Correlation"=spatial_corr_flood,  
+       "Max Distance"=max_flood_dist) %>% 
+    kable(caption="Climate Box - Floods", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = F, position = "right")
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+tibble("Initial % Sustainable" = flag_agri_init, 
+       "Spatial Random Productivities" = flag_prod, 
+       "Switch Own Property Evaluation" = flag_switch_own_prop, 
+       "Switch Fitness Type" = flag_type_switch, 
+       "Initial Producers Property" = flag_init_prod) %>% 
+    kable(caption="Minor Flags", align='c') %>% 
+    kable_styling(bootstrap_options = "hover", full_width = T)
+
+
+
+```
+
+
