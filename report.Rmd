@@ -19,7 +19,9 @@ library(pander)
 library(reshape2)
 library(kableExtra)
 
-#load("~/Projects/agrilove/data.RData") #load data
+#load("~/Projects/agrilowe/prova_tidy.RData")
+#load("~/Projects/agrilowe/data2.RData")
+#load("~/Projects/agrilowe/data30.RData")
 transient <- 100
 theme_set(theme_grey())
 ```

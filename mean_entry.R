@@ -13,9 +13,15 @@ mean_entry_f <- function(j){
     wealth[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]              <<- wealth[ii,kk,t,p]   
     revenues[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]            <<- revenues[ii,kk,t,p] 
     tot_cost[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]            <<- tot_cost[ii,kk,t,p]
-    L[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]                   <<- L[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]
+    L[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]                   <<- L[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]#mean((L[, , t, p])[world[,,t,p]!=0])
     reborn[cells_on_sale[j,"row"],cells_on_sale[j,"col"],t,p]              <<- 1
     
     #update rebound counter
     rebound_counter[p]                                                     <<- rebound_counter[p] +1
 }
+
+
+
+
+
+

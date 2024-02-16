@@ -10,14 +10,14 @@ profit_f <- function(){
         revenues[i,k,t,p]   <<- food_price[t,p]*sales[i,k,t,p]
         tot_cost[i,k,t,p]   <<- wage[t,p]*L[i,k,t,p] + price_land[i,k,t,p] + RDint[i,k,t,p] + IMint[i,k,t,p]
         
-        if((flag_conv_tax==1)&(t>ergodic_trans)){ #collect tax money from conventionals, proportional to revenues
+        if((flag_conv_tax==1)&(t>ergodic_trans)&(t>time_conv_tax)){ #collect tax money from conventionals, proportional to revenues
             if(agri[i,k,t,p]==1){#if conventional
                 contribute <<- revenues[i,k,t,p]*(rd_effort)*conv_tax#revenues[i,k,t,p]*conv_tax
                 revenues[i,k,t,p] <<- revenues[i,k,t,p] - contribute
                 sum_tax[t,p] <<- sum_tax[t,p] + contribute
             }
         }
-        if((flag_conv_tax==2)&(t>ergodic_trans)){ #collect tax money from conventionals, proportional to profits
+        if((flag_conv_tax==2)&(t>ergodic_trans)&(t>time_conv_tax)){ #collect tax money from conventionals, proportional to profits
             if(agri[i,k,t,p]==1){#if conventional
                 contribute <<- (revenues[i,k,t,p] - tot_cost[i,k,t,p])*conv_tax
                 if(contribute>0){
@@ -46,8 +46,7 @@ profit_f <- function(){
         }
         
         profit[i,k,t,p]     <<- revenues[i,k,t,p] - tot_cost[i,k,t,p]
-        #print(paste("profit time ", t,profit[i,k,t,p]))
-        
+
         lab_share_cost[i,k,t,p]  <<- wage[t,p]*L[i,k,t,p]/tot_cost[i,k,t,p]
         land_share_cost[i,k,t,p] <<- price_land[i,k,t,p]/tot_cost[i,k,t,p]
     }

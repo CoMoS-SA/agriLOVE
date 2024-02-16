@@ -71,6 +71,6 @@ get_ray_exact_cells <- function(mx,i,k,ray){
 divisors <- function(x){
     #  Vector of numberes to test against
     y <- seq_len(x)
-    #  Module division. If remainder is 0 that number is a divisor of x so return it
+    #  Modulo division. If remainder is 0 that number is a divisor of x so return it
     y[ x%%y == 0 ]
 }

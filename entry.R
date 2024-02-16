@@ -23,9 +23,9 @@ entry_f <- function(){
             }
             
             if(flag_auction==1 & flag_land_abandon==1){
-                mkt_share[z,t,p]            <<- 0                                                           # land is abandoned, producer ceases to exist
-                existing_producers[z,t,p]   <<- 0
-                if(flag_auction==1 & sum(mkt_share_cell_on_sale[mkt_share_cell_on_sale[,"sold"]==0,"ms"])!=0){ # some land has been abandoned, need to redistribute market share
+                mkt_share[z,t,p]    <<- 0 #land is abandoned, producer ceases to exist
+                existing_producers[z,t,p] <<- 0
+                if(flag_auction==1 & sum(mkt_share_cell_on_sale[mkt_share_cell_on_sale[,"sold"]==0,"ms"])!=0){ #some land has been ababdoned, need to redistribute market share
                     temp_old_mkt_shares <<- sum(mkt_share_cell_on_sale[mkt_share_cell_on_sale[,"sold"]==0,"ms"]) 
                     for(zzz in 1:dim(existing_producers)[1]){
                         if(existing_producers[zzz,t,p]==1){
@@ -53,9 +53,9 @@ entry_f <- function(){
                 }
                 
                 if(sum(mkt_share[,t,p]<0)>0){
-                    red_neg_mkt_share <<- sum(mkt_share[,t,p][mkt_share[,t,p]<0])                               # select negative values
+                    red_neg_mkt_share <<- sum(mkt_share[,t,p][mkt_share[,t,p]<0]) #select negative values
                     mkt_share[,t,p][mkt_share[,t,p]>0] <<- mkt_share[,t,p][mkt_share[,t,p]>0] + red_neg_mkt_share/length(mkt_share[,t,p][mkt_share[,t,p]>0])
-                    mkt_share[,t,p][mkt_share[,t,p]<0] <<- 0 
+                    mkt_share[,t,p][mkt_share[,t,p]<0] <<- 0 #TO BE FIXED: if producer allocated with 0 market_share fails and rebound in the same period, throws an error
                 }
                 
                 

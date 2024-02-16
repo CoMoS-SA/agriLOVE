@@ -5,7 +5,7 @@ market_f <- function(){
     
     if(!isTRUE(all.equal(sum(mkt_share[,t-1,p]),1))){print(paste("ERROR at time ",t,": Market shares from previous period do not sum up to 1", sep = ""))}
     
-    #compute fitness
+    #compute fitness (farmers compete on inverse cost)
     if(t==2){
         fitness[,t,p]  <<- 1/p_cost[,t,p]
         
@@ -24,6 +24,7 @@ market_f <- function(){
             mkt_share[z,t,p] <<- 0
         }
     }
+    
     
     if(!isTRUE(all.equal(sum(mkt_share[,t,p]),1))){print(paste("ERROR at time ", t,": Market shares do not sum up to 1", sep = ""))}
     
@@ -68,5 +69,5 @@ market_f <- function(){
     }
     
     p_sales[,t,p] <<- temp_sales
-    
+    if(t==15){print(p_sales[,15,1])}
 }

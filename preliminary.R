@@ -84,28 +84,13 @@ preliminary_f <- function(){
     # Where are the forests?
     non_forest_pos         <- which(world[,,t,1]!=0, arr.ind = T) 
     
-    
     if(flag_def_policy!=0){
-        agri_share_def[t,p] <<- sum(agri[,,t,p]==2)/sum(agri[,,t,p]!=0)
+        agri_share_def[t,p] <<- sum(agri[,,t,p]==0)/sum(agri[,,1,p]==0)
         if(t>ergodic_trans){
-            if( (agri_share_def[t-1,p]<tresh_def_pol & agri_share_def[t,p]>tresh_def_pol) | (agri_share_def[t-1,p]>tresh_def_pol & agri_share_def[t,p]<tresh_def_pol) ){
+            if(agri_share_def[t-1,p]>=tresh_def_pol & agri_share_def[t,p]<=tresh_def_pol ){
                 flag_deforestation <<- 0
+                print(paste("At time", t, "policy forbidding deforestation in place"))
             }
         }
     }
-    
-    #if(flag_conv_tax==1|flag_conv_tax==2){ #if no more sustainables, suspend policy
-    #    if((flag_conv_tax==1)&(t==2)){
-    #        flag_conv_tax<<-1
-    #    }
-    #    if((flag_conv_tax==2)&(t==2)){
-    #        print("yo")
-    #        flag_conv_tax<<-2
-    #    }
-    #    if(sum(agri[,,t,p]==2)==0){
-    #        print("POLICY SUPPRESSED")
-    #        flag_conv_tax <<- 0
-    #    }
-    #}
-    
 }

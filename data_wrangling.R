@@ -5,8 +5,6 @@ library(knitr)
 library(pander)
 library(reshape2)
 
-#load("~/Projects/agrilove/data3.RData")#load data
-
 theme_set(theme_light())
 
 ##### CELL VARIABLES #####
@@ -183,3 +181,4 @@ if(save_data==1){ #save data
         save.image(paste0(data_path,".RData"))
     }
 }
+

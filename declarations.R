@@ -19,7 +19,7 @@ agri                <- array(0, dim = c(x,y,time,mc))       # type of agricultur
 gain                <- array(0, dim = c(x,y,time,mc))       
 loss                <- array(0, dim = c(x,y,time,mc))       
 L                   <- array(0, dim = c(x,y,time,mc))       # labor
-unfilled_demand     <- array(0, dim = c(x,y,time,mc))       # unfilled demand
+unfilled_demand     <- array(0, dim = c(x,y,time,mc))       # unfille demand
 IMM                 <- array(0, dim = c(x,y,time,mc))       # land productivity of imitated cell
 IMint               <- array(0, dim = c(x,y,time,mc))       # RD imitation expenses
 IM_scaling          <- array(0, dim = c(x,y,time,mc))       # RD imitation expenses compared to max spender
@@ -58,6 +58,10 @@ cost_share_fitness  <- array(0, dim = c((x*y),time,mc))     # cost shares of fit
 n_property          <- array(0, dim = c((x*y),time,mc))     # number of owned cells
 p_bankrupt          <- array(0, dim = c((x*y),time,mc))     # equal to 1 if producer goes bankrupt
 p_L                 <- array(0, dim = c((x*y),time,mc))     # producer labor
+#
+p_agri              <- array(0, dim = c((x*y),time,mc))     # producer type of agriculture
+mkt_share_sust      <- array(0, dim = c((x*y),time,mc))  
+mkt_share_conv      <- array(0, dim = c((x*y),time,mc))  
 
 
 #Vectors of lenght t
@@ -79,6 +83,13 @@ forest_gone         <- array(0, dim = c(time,mc))
 wastelands          <- array(0, dim = c(time,mc)) 
 agri_share_def      <- array(0, dim = c(time,mc)) 
 sum_tax             <- array(0, dim = c(time,mc))
+#
+demand_sust         <- array(0, dim = c(time,mc))
+demand_sr           <- array(0, dim = c(time,mc))
+demand_conv         <- array(0, dim = c(time,mc))
+supply_sust         <- array(0, dim = c(time,mc))
+supply_sr           <- array(0, dim = c(time,mc))
+
 
 #Counters
 sales_counter       <- array(0, dim = mc)                   # sales counter
@@ -93,3 +104,5 @@ p_bidding                           <- array(0, dim = x*y)          # bidding pr
 switcher                            <- array(0, dim = c((x*y),mc))
 mkt_share_cell_on_sale              <- array(0, dim = c((x*y),2))   # market share moving matrix during auctions
 colnames(mkt_share_cell_on_sale)    <- c("ms","sold")               # returns cell market share in first column, whether it has been sold (1) or must rebound (0) in the auction in the second column (local, not global environment) 
+
+

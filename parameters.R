@@ -36,7 +36,8 @@ ray                 <- 2                    # ray of observation
 switch_time         <- 30                   # periods after which one can switch
 wind_switch         <- 30                   # number of periods observed when evaluating neighbors performance (max = switch time)
 tau                 <- 1                    # tunes propensity to switch
-tau_delta           <- 0                    # gains and loss with respect to tau for conventional and sustainables (see flag_tau) 
+tau_delta           <- 0                    # 0 #gains and loss with respect to tau for conventional and sustainables (see flag_tau) 
+
 
 # RD
 rd_effort           <- 0.1                  # share of revenues devoted to innovation
@@ -50,7 +51,7 @@ agri_growth_penalty <- 0.17                 # tunes the growth penalty for susta
 
 # Imitation
 imit_effort         <- 0.05                 # share of revenues devoted to imitation
-imit_frac           <- 0.01                 # to be removed?
+imit_frac           <- 0.01                 
 mu_imit             <- 0.01                 # share of imitated cell productivity in linear combination with self productivity
 mu_band             <- 0.01                 # share of best cell productivity amonf those owned in linear combination with self productivity
 
@@ -65,11 +66,11 @@ deg_t               <- 10                   # periods affecting conventional los
 lower_asymp         <- 0                                              # the lower asymptote
 upper_asymp_conv    <- mean(c(theta_min , theta_max ))*(1)            # upper asymptote of conventional farmers
 growth_conv         <- 0.045                                          # loss growth of conventional farmers
-start_time_conv     <- 100                                            # starting time. Doesn't change the shape, just shifts the logistic on the right/left. If you want the logistic to be simmetric (entire S) on positive domain, set it equal to time/2
+start_time_conv     <- 100                                           # starting time. Doesn't change the shape, just shifts the logistic on the right/left. If you want the logistic to be simmetric (entire S) on positive domain, set it equal to time/2
 start_time_sust     <- time/4
 upper_asymp_sust    <- mean(c(theta_min , theta_max ))*(0.5)          # upper asymptote of sustainable farmers
 growth_sust         <- 0.01                                           # loss growth of sustainable farmers
-asymp_asym_conv     <- 1                                              # >0 , affects near which asymptote maximum growth occurs. For a flex in the middle, set to 1.
+asymp_asym_conv     <- 1                                              #  >0 , affects near which asymptote maximum growth occurs. For a flex in the middle, set to 1.
 asymp_asym_sust     <- 1 
 
 # Climate Box 
@@ -85,19 +86,19 @@ spatial_corr_drought<- 1.2
 max_drought_dist    <- 5
 
 # Deforestation
-deforestation_prob  <-  1                                                       
+deforestation_prob  <-  1 
 forest_theta_gain   <-  0.05
-price_deforestation <-  0
+price_deforestation <-  0 
 time_to_forest      <-  50
-def_rho             <-  0.1
+def_rho             <-  0.1 
 
-# Climate shocks
-time_floods         <- 300
-var_flood           <- 0.2
-floods_no           <- 1
-shocked_cells       <- array(0,dim=c(floods_no,2)); colnames(shocked_cells)    <- c("row","col")  
+#Climate shocks
+time_floods <- 300
+var_flood <- 0.2 
+floods_no <- 1
+shocked_cells <- array(0,dim=c(floods_no,2)); colnames(shocked_cells)    <- c("row","col")  
 
-# insert cell coordinates for shocked cells (number of rows equal to floods_no)
+#insert cell coordinates for shocked cells (number of rows equal to floods_no)
 if(flag_shock_cell==1){
     shocked_cells[1,] <- c(11,7) #max prod
 }
@@ -114,20 +115,26 @@ if(flag_shock_cell==5){
     shocked_cells[1,] <- c(13,13) #min prod
 }
 
-# if climate box active, load baseline demand
+
+#if climate box active, load baseline demand
 if(flag_climate==2){
     load("baseline_climate_demand.RData")
 }
 
+
 max_labor <- 0.5
 eps_wage  <- 0.10
 
-# if deforestation policy is active
+#if deforestation policy is active
 if(flag_def_policy!=0){
-    tresh_def_pol <- 0.1
+    tresh_def_pol <- 0
 }
 
 if(flag_conv_tax==1|flag_conv_tax==2|flag_conv_tax==3|flag_conv_tax==4|flag_conv_tax==5){
-    conv_tax <- 0.1
+    conv_tax <- 0
 }
 
+# Policy
+
+time_conv_tax <- 0 #time when policies (conventional tax, sustainable subsidies) start to kick-in. 
+demand_share_sust <- 0
